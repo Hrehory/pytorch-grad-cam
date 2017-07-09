@@ -9,7 +9,7 @@ import torch
 import torchvision
 from torch.autograd import Variable
 import torch.nn as nn
-
+from torchvision.models import VGG
 
 # science modules
 import cv2
@@ -20,9 +20,27 @@ import matplotlib.pyplot as plt
 import sys
 
 
+
+
+
+
+'''
+def backward(gradient=None, retain_graph=None, create_graph=None, retain_variables=None):
+    print (gradient)
+    torch.autograd.backward(self, gradient, retain_graph, create_graph, retain_variables)
+'''
+
 model = torchvision.models.vgg19(pretrained=True)
-#for param in model.named_parameters():
-#    print (param)
+#model.backward = backward
+
+
+def guided_hook(grad):
+    print (grad.size())
+    grad[grad < 0] = 0.0
+    return grad
+
+for name, param in model.named_parameters():
+    param.register_hook(guided_hook) 
 
 
 img = cv2.imread(sys.argv[1], 1)
@@ -39,8 +57,11 @@ target[winning_class] = 1
 
 criterion = nn.MSELoss()
 
-loss = criterion(output.clamp(0,1), target)
+loss = criterion(output, target)
 loss.backward()
+
+#for name, param in model.named_parameters():
+#    print (param.grad)
 
 gradient_img = input.grad.data.numpy().reshape(224,224,3)
 gray = cv2.cvtColor(gradient_img, cv2.COLOR_BGR2GRAY)
